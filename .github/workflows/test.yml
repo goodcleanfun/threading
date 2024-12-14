@@ -31,7 +31,7 @@ jobs:
           make
           sudo make install
       - name: Run tests
-        run: make CC=${{ matrix.compiler }} LDFLAGS=-pthread install test
+        run: make CC=${{ matrix.compiler }} CFLAGS="-std=c11" LDFLAGS="-pthread" install test
 
   test-macos:
     runs-on: macos-latest
@@ -54,7 +54,7 @@ jobs:
           make CC=${{ matrix.compiler }}
           sudo make install
       - name: Run tests with ${{ matrix.compiler }}
-        run: make CC=${{ matrix.compiler }} install test
+        run: make CC=${{ matrix.compiler }} CFLAGS="-std=c11" install test
 
   test-windows:
     runs-on: windows-latest
@@ -70,4 +70,4 @@ jobs:
           mkdir -p deps/greatest
           curl -L https://github.com/silentbicycle/greatest/raw/release/greatest.h -o deps/greatest/greatest.h
       - name: Run tests with MSVC
-        run: make CC=cl test
+        run: make CC=cl CFLAGS="/std:c11" test
