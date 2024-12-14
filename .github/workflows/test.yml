@@ -55,3 +55,22 @@ jobs:
           sudo make install
       - name: Run tests with ${{ matrix.compiler }}
         run: make CC=${{ matrix.compiler }} test
+
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          choco install make
+          choco install curl
+          choco install gzip
+      - name: Install clib
+        run: |
+          git clone https://github.com/clibs/clib.git
+          cd clib
+          make CC=cl
+          make install
+      - name: Run tests with MSVC
+        run: make CC=cl test
+          
