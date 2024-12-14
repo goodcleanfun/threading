@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "threads.h"
+#include "threading.h"
 #include "greatest/greatest.h"
 
 

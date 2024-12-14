@@ -1,8 +1,7 @@
-#ifndef CROSS_PLATFORM_C11_THREADS_H
-#define CROSS_PLATFORM_C11_THREADS_H
+#ifndef THREADING_H
+#define THREADING_H
 
 #if defined(__has_include) && __has_include(<threads.h>) && !defined(__STDC_NO_THREADS__)
-#pragma message ( "Using system threads.h" )
 #include <threads.h>
 #else
 
@@ -505,4 +504,4 @@ static int tss_set(tss_t key, void *value) {
 #endif
 
 #endif // defined(__has_include) && __has_include(<threads.h>)
-#endif // CROSS_PLATFORM_C11_THREADS_H
+#endif // THREADING_H
