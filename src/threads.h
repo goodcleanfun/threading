@@ -2,6 +2,7 @@
 #define CROSS_PLATFORM_C11_THREADS_H
 
 #if defined(__has_include) && __has_include(<threads.h>) && !defined(__STDC_NO_THREADS__)
+#pragma message ( "Using system threads.h" )
 #include <threads.h>
 #else
 
