@@ -1,0 +1,58 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  test-ubuntu:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-gnutls-dev
+      - name: Set up ${{ matrix.compiler }}
+        run: |
+          if [ "${{ matrix.compiler }}" == "clang" ]; then
+            sudo apt-get install -y clang;
+          fi
+      - name: Install clib
+        run: |
+          git clone https://github.com/clibs/clib.git
+          cd clib
+          make
+          sudo make install
+      - name: Run tests
+        run: make CC=${{ matrix.compiler }} test
+
+  test-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: brew install curl
+      - name: Install ${{ matrix.compiler }}
+        run: |
+          if [ "${{ matrix.compiler }}" == "gcc" ]; then
+            brew install gcc;
+          fi
+      - name: Install clib
+        run: |
+          git clone https://github.com/clibs/clib.git
+          cd clib
+          make CC=${{ matrix.compiler }}
+          sudo make install
+      - name: Run tests with ${{ matrix.compiler }}
+        run: make CC=${{ matrix.compiler }} test
+
