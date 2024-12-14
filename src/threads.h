@@ -1,5 +1,5 @@
-#ifndef THREADS_H
-#define THREADS_H
+#ifndef CROSS_PLATFORM_C11_THREADS_H
+#define CROSS_PLATFORM_C11_THREADS_H
 
 #if defined(__has_include) && __has_include(<threads.h>) && !defined(__STDC_NO_THREADS__)
 #include <threads.h>
@@ -504,4 +504,4 @@ static int tss_set(tss_t key, void *value) {
 #endif
 
 #endif // defined(__has_include) && __has_include(<threads.h>)
-#endif // THREADS_H
+#endif // CROSS_PLATFORM_C11_THREADS_H
