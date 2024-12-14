@@ -31,7 +31,7 @@ jobs:
           make
           sudo make install
       - name: Run tests
-        run: make CC=${{ matrix.compiler }} LDFLAGS=-pthread test
+        run: make CC=${{ matrix.compiler }} LDFLAGS=-pthread install test
 
   test-macos:
     runs-on: macos-latest
@@ -54,7 +54,7 @@ jobs:
           make CC=${{ matrix.compiler }}
           sudo make install
       - name: Run tests with ${{ matrix.compiler }}
-        run: make CC=${{ matrix.compiler }} test
+        run: make CC=${{ matrix.compiler }} install test
 
   test-windows:
     runs-on: windows-latest
@@ -64,13 +64,9 @@ jobs:
         run: |
           choco install make
           choco install curl
-          choco install gzip
-      - name: Install clib
+      - name: Install greatest
         run: |
-          git clone https://github.com/clibs/clib.git
-          cd clib
-          make CC=cl
-          make install
+          mkdir -p deps/greatest
+          curl -L https://github.com/silentbicycle/greatest/raw/release/greatest.h -o deps/greatest/greatest.h
       - name: Run tests with MSVC
         run: make CC=cl test
-          
