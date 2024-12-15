@@ -6,6 +6,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define THREADING_UNDEF_WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <stdnoreturn.h>
 #ifdef THREADING_UNDEF_WIN32_LEAN_AND_MEAN
 #undef THREADING_UNDEF_WIN32_LEAN_AND_MEAN
 #undef WIN32_LEAN_AND_MEAN
