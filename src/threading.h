@@ -23,7 +23,7 @@
  #define _Thread_local __thread
 #endif
 
-#if defined(__has_include) && __has_include(<threads.h>) && !defined(__STDC_NO_THREADS__) && !defined(_MSC_VER)
+#if defined(__has_include) && __has_include(<threads.h>) && !defined(__STDC_NO_THREADS__)
 #include <threads.h>
 #else
 
