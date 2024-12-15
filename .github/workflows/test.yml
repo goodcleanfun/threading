@@ -87,7 +87,7 @@ jobs:
           choco install curl -y
       - name: Download greatest.h
         run: |
-          mkdir deps/greatest
+          mkdir -p deps/greatest
           curl -L https://github.com/silentbicycle/greatest/raw/release/greatest.h -o deps/greatest/greatest.h
       - name: Build and Test with MinGW
         run: |
