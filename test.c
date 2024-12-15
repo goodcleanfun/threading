@@ -486,6 +486,12 @@ SUITE(test_threads_suite) {
     #ifndef NO_CT_TLS
     RUN_TEST(test_thread_local_storage);
     #endif
+    RUN_TEST(test_sleep);
+    RUN_TEST(test_thread_exit);
+    RUN_TEST(test_yield);
+    RUN_TEST(test_time);
+    RUN_TEST(test_once);
+    RUN_TEST(test_tss);
 
     // Clean up
     mtx_destroy(&mutex);
