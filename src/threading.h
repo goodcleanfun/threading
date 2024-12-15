@@ -6,7 +6,6 @@
 #define WIN32_LEAN_AND_MEAN
 #define THREADING_UNDEF_WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <stdnoreturn.h>
 #ifdef THREADING_UNDEF_WIN32_LEAN_AND_MEAN
 #undef THREADING_UNDEF_WIN32_LEAN_AND_MEAN
 #undef WIN32_LEAN_AND_MEAN
@@ -22,6 +21,11 @@
  #endif
 #elif defined(__GNUC__) && defined(__GNUC_MINOR__) && (((__GNUC__ << 8) | __GNUC_MINOR__) < ((4 << 8) | 9))
  #define _Thread_local __thread
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__) && !defined(_Noreturn)
+#define _Noreturn __declspec(noreturn)
+#define no_return _Noreturn
 #endif
 
 #if defined(__has_include) && __has_include(<threads.h>) && !defined(__STDC_NO_THREADS__)
