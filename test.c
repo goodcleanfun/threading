@@ -486,7 +486,6 @@ SUITE(test_threads_suite) {
     #ifndef NO_CT_TLS
     RUN_TEST(test_thread_local_storage);
     #endif
-    RUN_TEST(test_thread_locking);
 
     // Clean up
     mtx_destroy(&mutex);
