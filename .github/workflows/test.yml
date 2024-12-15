@@ -55,3 +55,40 @@ jobs:
           sudo make install
       - name: Run tests with ${{ matrix.compiler }}
         run: make CC=${{ matrix.compiler }} CFLAGS="-std=c11" install test
+
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Install dependencies
+        run: |
+          choco install make
+          choco install curl
+      - name: Install greatest
+        run: |
+          mkdir -p deps\greatest
+          curl -L https://github.com/silentbicycle/greatest/raw/release/greatest.h -o deps\greatest\greatest.h
+      - name: Run tests with MSVC
+        run: make CC=cl CFLAGS="/std:c11" test
+
+  test-windows-mingw:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify GCC Version
+        run: |
+          gcc --version
+      - name: Install curl
+        run: |
+          choco install curl -y
+      - name: Download greatest.h
+        run: |
+          mkdir deps/greatest
+          curl -L https://github.com/silentbicycle/greatest/raw/release/greatest.h -o deps/greatest/greatest.h
+      - name: Build and Test with MinGW
+        run: |
+          make CC=gcc CFLAGS="-std=c11" test

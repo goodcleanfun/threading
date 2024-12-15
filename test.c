@@ -16,7 +16,11 @@
 #endif
 
 #ifndef NO_CT_TLS
+#if !defined(_WIN32) && !defined(_WIN64)
 _Thread_local int tls_var = 0;
+#else
+__declspec(thread) int tls_var = 0;
+#endif
 #endif
 
 // Test variables
