@@ -1,7 +1,7 @@
 #ifndef THREADING_H
 #define THREADING_H
 
-#if defined(__has_include) && __has_include(<threads.h>) && !defined(__STDC_NO_THREADS__)
+#if defined(__has_include) && __has_include(<threads.h>) && !defined(__STDC_NO_THREADS__) && !defined(_MSC_VER)
 #include <threads.h>
 #else
 
