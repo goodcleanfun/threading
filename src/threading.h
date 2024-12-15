@@ -11,6 +11,7 @@
 #undef WIN32_LEAN_AND_MEAN
 #endif
 #endif
+#endif
 
 #if !(defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201102L)) && !defined(_Thread_local)
  #if defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__SUNPRO_CC) || defined(__IBMCPP__)
@@ -440,7 +441,7 @@ static int cnd_wait(cnd_t *cond, mtx_t *mtx) {
     if (mtx->timed) {
         return thrd_error;
     }
-    SleepConditionVariableCS(cond, mtx->handle.cs, INFINITE);
+    SleepConditionVariableCS(cond, &(mtx->handle.cs), INFINITE);
     return thrd_success;
 #else
     return pthread_cond_wait(cond, mtx) == 0 ? thrd_success : thrd_error;
@@ -454,7 +455,7 @@ static int cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *ts) {
         return thrd_error;
     }
     DWORD ms = (DWORD)((ts->tv_sec * 1000) + (ts->tv_nsec / 1000000));
-    return SleepConditionVariableCS(cond, mtx->handle.cs, ms) ? thrd_success : thrd_timedout;
+    return SleepConditionVariableCS(cond, &(mtx->handle.cs), ms) ? thrd_success : thrd_timedout;
 #else
     int ret = pthread_cond_timedwait(cond, mtx, ts);
     if (ret == 0) {
