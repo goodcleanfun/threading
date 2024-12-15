@@ -1,6 +1,27 @@
 #ifndef THREADING_H
 #define THREADING_H
 
+#if defined(_WIN32) || defined(_WIN64)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#define THREADING_UNDEF_WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#ifdef THREADING_UNDEF_WIN32_LEAN_AND_MEAN
+#undef THREADING_UNDEF_WIN32_LEAN_AND_MEAN
+#undef WIN32_LEAN_AND_MEAN
+#endif
+#endif
+
+#if !(defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201102L)) && !defined(_Thread_local)
+ #if defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__SUNPRO_CC) || defined(__IBMCPP__)
+  #define _Thread_local __thread
+ #else
+  #define _Thread_local __declspec(thread)
+ #endif
+#elif defined(__GNUC__) && defined(__GNUC_MINOR__) && (((__GNUC__ << 8) | __GNUC_MINOR__) < ((4 << 8) | 9))
+ #define _Thread_local __thread
+#endif
+
 #if defined(__has_include) && __has_include(<threads.h>) && !defined(__STDC_NO_THREADS__) && !defined(_MSC_VER)
 #include <threads.h>
 #else
@@ -23,7 +44,6 @@ extern "C" {
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
-#include <windows.h>
 #include <process.h>
 #else
 #include <errno.h>
@@ -31,6 +51,16 @@ extern "C" {
 #include <signal.h>
 #include <pthread.h>
 #include <unistd.h>
+#endif
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+  #define THREADING_NO_RETURN _Noreturn
+#elif defined(__GNUC__)
+  #define THREADING_NO_RETURN __attribute__((noreturn))
+#elif defined(_MSC_VER)
+    #define THREADING_NO_RETURN __declspec(noreturn)
+#else
+    #define THREADING_NO_RETURN
 #endif
 
 // Define thread types
@@ -133,7 +163,7 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining) {
         if (remaining != NULL) {
             timespec_get(remaining, TIME_UTC);
             remaining->tv_sec -= start.tv_sec;
-            remaining->tv_nssec -= start.tv_nsec;
+            remaining->tv_nsec -= start.tv_nsec;
             if (remaining->tv_nsec < 0) {
                 remaining->tv_nsec += 1000000000;
                 remaining->tv_sec -= 1;
@@ -141,7 +171,6 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining) {
         }
         return (t == WAIT_IO_COMPLETION) ? -1 : -2;
     }
-}
 #else
     int res = nanosleep(duration, remaining);
     if (res == 0) {
@@ -165,7 +194,7 @@ static int thrd_detach(thrd_t thr) {
 }
 
 // Thread exit
-static void thrd_exit(int res) {
+THREADING_NO_RETURN static void thrd_exit(int res) {
 #if defined(_WIN32) || defined(_WIN64)
     _endthreadex((unsigned)res);
 #else
@@ -378,7 +407,7 @@ static int mtx_unlock(mtx_t *mtx) {
 static void mtx_destroy(mtx_t *mtx) {
 #if defined(_WIN32) || defined(_WIN64)
     if (!mtx->timed) {
-        DeleteCriticalSection(&(mtx->handle.cs))
+        DeleteCriticalSection(&(mtx->handle.cs));
     } else {
         CloseHandle(mtx->handle.mut);
     }
@@ -408,7 +437,10 @@ static void cnd_destroy(cnd_t *cond) {
 // Condition variable wait
 static int cnd_wait(cnd_t *cond, mtx_t *mtx) {
 #if defined(_WIN32) || defined(_WIN64)
-    SleepConditionVariableCS(cond, mtx, INFINITE);
+    if (mtx->timed) {
+        return thrd_error;
+    }
+    SleepConditionVariableCS(cond, mtx->handle.cs, INFINITE);
     return thrd_success;
 #else
     return pthread_cond_wait(cond, mtx) == 0 ? thrd_success : thrd_error;
@@ -418,8 +450,11 @@ static int cnd_wait(cnd_t *cond, mtx_t *mtx) {
 // Condition variable timed wait
 static int cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *ts) {
 #if defined(_WIN32) || defined(_WIN64)
+    if (mtx->timed) {
+        return thrd_error;
+    }
     DWORD ms = (DWORD)((ts->tv_sec * 1000) + (ts->tv_nsec / 1000000));
-    return SleepConditionVariableCS(cond, mtx, ms) ? thrd_success : thrd_timedout;
+    return SleepConditionVariableCS(cond, mtx->handle.cs, ms) ? thrd_success : thrd_timedout;
 #else
     int ret = pthread_cond_timedwait(cond, mtx, ts);
     if (ret == 0) {
@@ -503,5 +538,6 @@ static int tss_set(tss_t key, void *value) {
 }
 #endif
 
+#undef THREADING_NO_RETURN
 #endif // defined(__has_include) && __has_include(<threads.h>)
 #endif // THREADING_H
