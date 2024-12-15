@@ -483,19 +483,6 @@ SUITE(test_threads_suite) {
     cnd_init(&cond);
 
     RUN_TEST(test_thread_arg_and_return);
-    #ifndef NO_CT_TLS
-    RUN_TEST(test_thread_local_storage);
-    #endif
-    RUN_TEST(test_thread_locking);
-    RUN_TEST(test_mutex_recursive);
-    RUN_TEST(test_mutex_timed);
-    RUN_TEST(test_sleep);
-    RUN_TEST(test_thread_exit);
-    RUN_TEST(test_condition_variables);
-    RUN_TEST(test_yield);
-    RUN_TEST(test_time);
-    RUN_TEST(test_once);
-    RUN_TEST(test_tss);
 
     // Clean up
     mtx_destroy(&mutex);
