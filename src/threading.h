@@ -160,7 +160,7 @@ static void _tss_cleanup (void) {
     }
 
     while (_tss_head != NULL) {
-        data = _threading_tss_head->next;
+        data = _tss_head->next;
         free(_tss_head);
         _tss_head = data;
     }
@@ -177,7 +177,7 @@ static void NTAPI _tss_callback(PVOID h, DWORD reason, PVOID pv) {
     (void)h;
     (void)pv;
 
-    if (_tss_head != NULL && (reason == DLL_THREAD_DETACH || dwReason == DLL_PROCESS_DETACH)) {
+    if (_tss_head != NULL && (reason == DLL_THREAD_DETACH || reason == DLL_PROCESS_DETACH)) {
         _tss_cleanup();
     }
 }
