@@ -415,9 +415,9 @@ struct test_thread_specific_data {
 } test_tss_data;
 
 static void test_tss_free(void *val) {
-    mtx_lock(&test_tss_data.mutex);
+    mtx_lock(&(test_tss_data.mutex));
     test_tss_data.values_freed++;
-    mtx_unlock(&test_tss_data.mutex);
+    mtx_unlock(&(test_tss_data.mutex));
     free(val);
 }
 

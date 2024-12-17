@@ -121,10 +121,115 @@ typedef struct {
 
 #define ONCE_FLAG_INIT {0}
 
+
+#if defined(_WIN32) || defined(_WIN64)
+struct _tss_data {
+  void* value;
+  tss_t key;
+  struct _tss_data* next;
+};
+
+#ifndef TSS_DESTRUCTOR_NUM_PASSES
+#define TSS_DESTRUCTOR_NUM_PASSES (4)
+#define TSS_DESTRUCTOR_NUM_PASSES_DEFINED
+#endif
+
+#define THREADING_WINDOWS_TLS_MAX_SLOTS 1088
+static tss_dtor_t _tss_destructors[THREADING_WINDOWS_TLS_MAX_SLOTS] = { NULL, };
+#undef THREADING_WINDOWS_TLS_MAX_SLOTS
+
+static _Thread_local struct _tss_data* _tss_head = NULL;
+static _Thread_local struct _tss_data* _tss_tail = NULL;
+
+static void _tss_cleanup (void) {
+    bool found = true;
+
+    for (int i = 0; i < TSS_DESTRUCTOR_NUM_PASSES && found; i++) {
+        found = false;
+        for (struct _tss_data *data = _tss_head; data != NULL; data = data->next) {
+            if (data->value != NULL) {
+                void *value = data->value;
+                data->value = NULL;
+
+                if (_tss_destructors[data->key] != NULL) {
+                    found = true;
+                    _tss_destructors[data->key](value);
+                }
+            }
+        }
+    }
+
+    while (_tss_head != NULL) {
+        data = _threading_tss_head->next;
+        free(_tss_head);
+        _tss_head = data;
+    }
+    _tss_head = NULL;
+    _tss_tail = NULL;
+}
+
+#ifdef TSS_DESTRUCTOR_NUM_PASSES_DEFINED
+#undef TSS_DESTRUCTOR_NUM_PASSES
+#undef TSS_DESTRUCTOR_NUM_PASSES_DEFINED
+#endif
+
+static void NTAPI _tss_callback(PVOID h, DWORD reason, PVOID pv) {
+    (void)h;
+    (void)pv;
+
+    if (_tss_head != NULL && (reason == DLL_THREAD_DETACH || dwReason == DLL_PROCESS_DETACH)) {
+        _tss_cleanup();
+    }
+}
+
+#if defined(_MSC_VER)
+    #ifdef _M_X64
+        #pragma const_seg(".CRT$XLB")
+    #else
+        #pragma data_seg(".CRT$XLB")
+    #endif
+    PIMAGE_TLS_CALLBACK p_thread_callback = _tss_callback;
+    #ifdef _M_X64
+        #pragma data_seg()
+    #else
+        #pragma const_seg()
+    #endif
+#else
+    PIMAGE_TLS_CALLBACK p_thread_callback __attribute__((section(".CRT$XLB"))) = _tss_callback;
+#endif
+
+
+typedef struct {
+    thrd_start_t func;
+    void* arg;
+} _thrd_wrapper_data;
+
+static DWORD WINAPI _thrd_wrapper_func(LPVOID arg) {
+    _thrd_wrapper_data* data = (_thrd_wrapper_data*)arg;
+    thrd_start_t func = data->func;
+    void* func_arg = data->arg;
+    free(data);
+
+    DWORD ret = (DWORD)func(func_arg);
+    if (_tss_head != NULL) {
+        _tss_cleanup();
+    }
+    return ret;
+}
+
+#endif
+
 // Thread creation
 static int thrd_create(thrd_t *thr, thrd_start_t func, void *arg) {
 #if defined(_WIN32) || defined(_WIN64)
-    *thr = (HANDLE)_beginthreadex(NULL, 0, (unsigned(__stdcall *)(void *))func, arg, 0, NULL);
+    _thrd_wrapper_data* data = (_thrd_wrapper_data*)malloc(sizeof(_thrd_wrapper_data));
+    if (data == NULL) {
+        return thrd_nomem;
+    }
+    data->func = func;
+    data->arg = arg;
+
+    *thr = CreateThread(NULL, 0, _thrd_wrapper_func, (LPVOID)data, 0, NULL);
     return *thr ? thrd_success : thrd_error;
 #else
     return pthread_create(thr, NULL, (void *(*)(void *))func, arg) == 0 ? thrd_success : thrd_error;
@@ -135,16 +240,18 @@ static int thrd_create(thrd_t *thr, thrd_start_t func, void *arg) {
 static int thrd_join(thrd_t thr, int *res) {
 #if defined(_WIN32) || defined(_WIN64)
     DWORD ret = WaitForSingleObject(thr, INFINITE);
-    if (ret == WAIT_OBJECT_0) {
-        if (res) {
-            DWORD code;
-            GetExitCodeThread(thr, &code);
-            *res = (int)code;
-        }
-        CloseHandle(thr);
-        return thrd_success;
+    if (ret == WAIT_FAILED) {
+        return thrd_error;
     }
-    return thrd_error;
+    if (res != NULL) {
+        DWORD code;
+        if (GetExitCodeThread(thr, &code) == 0) {
+            return thrd_error;
+        }
+        *res = (int)code;
+    }
+    CloseHandle(thr);
+    return thrd_success;
 #else
     void *retval;
     if (pthread_join(thr, &retval) == 0) {
@@ -192,8 +299,8 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining) {
 // Thread detach
 static int thrd_detach(thrd_t thr) {
 #if defined(_WIN32) || defined(_WIN64)
-    CloseHandle(thr);
-    return thrd_success;
+    // https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
+    return CloseHandle(thr) != 0 ? thrd_success : thrd_error;
 #else
     return pthread_detach(thr) == 0 ? thrd_success : thrd_error;
 #endif
@@ -202,7 +309,10 @@ static int thrd_detach(thrd_t thr) {
 // Thread exit
 THREADING_NO_RETURN static void thrd_exit(int res) {
 #if defined(_WIN32) || defined(_WIN64)
-    _endthreadex((unsigned)res);
+    if (_tss_head != NULL) {
+        _tss_cleanup();
+    }
+    ExitThread((DWORD)res);
 #else
     pthread_exit((void *)(intptr_t)res);
 #endif
@@ -229,7 +339,7 @@ static thrd_t thrd_current(void) {
 // Thread equal
 static int thrd_equal(thrd_t lhs, thrd_t rhs) {
 #if defined(_WIN32) || defined(_WIN64)
-    return lhs == rhs;
+    return GetThreadId(lhs) == GetThreadId(rhs);
 #else
     return pthread_equal(lhs, rhs);
 #endif
@@ -507,7 +617,11 @@ static void call_once(once_flag *flag, void (*func)(void)) {
 static int tss_create(tss_t *key, tss_dtor_t destructor) {
 #if defined(_WIN32) || defined(_WIN64)
     *key = TlsAlloc();
-    return (*key != TLS_OUT_OF_INDEXES) ? thrd_success : thrd_error;
+    if (*key == TLS_OUT_OF_INDEXES) {
+        return thrd_error;
+    }
+    _tss_destructors[*key] = destructor;
+    return thrd_success;
 #else
     return pthread_key_create(key, destructor) == 0 ? thrd_success : thrd_error;
 #endif
@@ -516,6 +630,25 @@ static int tss_create(tss_t *key, tss_dtor_t destructor) {
 // Thread-specific storage deletion
 static void tss_delete(tss_t key) {
 #if defined(_WIN32) || defined(_WIN64)
+    struct _tss_data *data = (struct _tss_data *)TlsGetValue(key);
+    struct _tss_data *prev = NULL;
+    if (data != NULL) {
+        if (data == _tss_head) {
+            _tss_head = data->next;
+        } else {
+            prev = _tss_head;
+            if (prev != NULL) {
+                while (prev->next != data) {
+                    prev = prev->next;
+                }
+            }
+        }
+        if (data == _tss_tail) {
+            _tss_tail = prev;
+        }
+        free(data);
+    }
+    _tss_destructors[key] = NULL;
     TlsFree(key);
 #else
     pthread_key_delete(key);
@@ -525,7 +658,8 @@ static void tss_delete(tss_t key) {
 // Thread-specific storage get
 static void *tss_get(tss_t key) {
 #if defined(_WIN32) || defined(_WIN64)
-    return TlsGetValue(key);
+    struct _tss_data *data = (struct _tss_data *)TlsGetValue(key);
+    return data != NULL ? data->value : NULL;
 #else
     return pthread_getspecific(key);
 #endif
@@ -534,7 +668,33 @@ static void *tss_get(tss_t key) {
 // Thread-specific storage set
 static int tss_set(tss_t key, void *value) {
 #if defined(_WIN32) || defined(_WIN64)
-    return TlsSetValue(key, value) ? thrd_success : thrd_error;
+    struct _tss_data *data = (struct _tss_data *)TlsGetValue(key);
+    if (data == NULL) {
+        data = (struct _tss_data *)malloc(sizeof(struct _tss_data));
+        if (data == NULL) {
+            return thrd_nomem;
+        }
+        data->value = value;
+        data->key = key;
+        data->next = NULL;
+
+        if (_tss_tail != NULL) {
+            _tss_tail->next = data;
+        } else {
+            _tss_tail = data;  
+        }
+
+        if (_tss_head == NULL) {
+            _tss_head = data;
+        }
+
+        if (!TlsSetValue(key, data)) {
+            free(data);
+            return thrd_error;
+        }
+    }
+    data->value = value;
+    return thrd_success;
 #else
     return pthread_setspecific(key, value) == 0 ? thrd_success : thrd_error;
 #endif
