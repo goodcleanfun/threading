@@ -487,6 +487,7 @@ SUITE(test_threads_suite) {
     RUN_TEST(test_thread_local_storage);
     #endif
     RUN_TEST(test_thread_locking);
+    RUN_TEST(test_mutex_timed);
     RUN_TEST(test_sleep);
     RUN_TEST(test_thread_exit);
     RUN_TEST(test_yield);
