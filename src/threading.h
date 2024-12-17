@@ -82,7 +82,7 @@ typedef struct {
     bool timed;               /* true if the mtx is timed */
 } mtx_t;
 typedef struct {
-    HANDLE mEvents[2];                  /* Signal and broadcast event HANDLEs. */
+    HANDLE events[2];                  /* Signal and broadcast event HANDLEs. */
     unsigned int num_waiters;           /* Count of the number of waiters. */
     CRITICAL_SECTION num_waiters_lock;  /* Serialize access to num_waiters. */
 } cnd_t;
