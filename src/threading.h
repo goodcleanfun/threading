@@ -267,7 +267,7 @@ static int mtx_init(mtx_t *mtx, int type) {
 static int mtx_lock(mtx_t *mtx) {
 #if defined(_WIN32) || defined(_WIN64)
     if (!mtx->timed) {
-        EnterCriticalSection(&mtx->handle.cs);
+        EnterCriticalSection(&(mtx->handle.cs));
     } else {
         DWORD result = WaitForSingleObject(mtx->handle.mut, INFINITE);
         if (result != WAIT_OBJECT_0) {
@@ -278,8 +278,8 @@ static int mtx_lock(mtx_t *mtx) {
     if (!mtx->recursive) {
         while (mtx->already_locked) {
             Sleep(1);
-            mtx->already_locked = true;
         }
+        mtx->already_locked = true;
     }
     return thrd_success;
 #else
@@ -298,7 +298,7 @@ int mtx_timedlock(mtx_t *mtx, const struct timespec *ts) {
 
     DWORD timeout_ms = 0;
 
-    if ((now.tv_sec < ts->tv_sec) || ((now.tv_sec == ts->tv_sec) && (now.tv_nsec <= ts->tv_nsec))) {
+    if ((now.tv_sec < ts->tv_sec) || ((now.tv_sec == ts->tv_sec) && (now.tv_nsec < ts->tv_nsec))) {
         timeout_ms = (DWORD)(ts->tv_sec - now.tv_sec) * 1000;
         timeout_ms += (ts->tv_nsec - now.tv_nsec) / 1000000;
         timeout_ms += 1;
@@ -309,8 +309,8 @@ int mtx_timedlock(mtx_t *mtx, const struct timespec *ts) {
         if (!mtx->recursive) {
             while (mtx->already_locked) {
                 Sleep(1);
-                mtx->already_locked = true;
             }
+            mtx->already_locked = true;
         }
         return thrd_success;
     } else if (result == WAIT_TIMEOUT) {
@@ -397,7 +397,7 @@ static int mtx_unlock(mtx_t *mtx) {
 #if defined(_WIN32) || defined(_WIN64)
     mtx->already_locked = false;
     if (!mtx->timed) {
-        LeaveCriticalSection(&mtx->handle.cs);
+        LeaveCriticalSection(&(mtx->handle.cs));
     } else {
         if (!ReleaseMutex(mtx->handle.mut)) {
             return thrd_error;
