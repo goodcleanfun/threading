@@ -142,11 +142,12 @@ static _Thread_local struct _tss_data* _tss_head = NULL;
 static _Thread_local struct _tss_data* _tss_tail = NULL;
 
 static void _tss_cleanup (void) {
+    struct _tss_data *data = NULL;
     bool found = true;
 
     for (int i = 0; i < TSS_DESTRUCTOR_NUM_PASSES && found; i++) {
         found = false;
-        for (struct _tss_data *data = _tss_head; data != NULL; data = data->next) {
+        for (data = _tss_head; data != NULL; data = data->next) {
             if (data->value != NULL) {
                 void *value = data->value;
                 data->value = NULL;
