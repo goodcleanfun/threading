@@ -1,6 +1,6 @@
 {
     "name": "threading",
-    "version": "0.2.17",
+    "version": "0.3.0",
     "repo": "goodcleanfun/threading",
     "description": "A simple cross-platform threads.h implementation",
     "keywords": [],
