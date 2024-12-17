@@ -561,7 +561,7 @@ static int cnd_init(cnd_t *cond) {
     }
     cond->events[_CONDITION_EVENT_ALL] = CreateEvent(NULL, true, false, NULL);
     if (cond->events[_CONDITION_EVENT_ALL] == NULL) {
-        CloseHandle(cond->mevents[_CONDITION_EVENT_ONE]);
+        CloseHandle(cond->events[_CONDITION_EVENT_ONE]);
         cond->events[_CONDITION_EVENT_ONE] = NULL;
         return thrd_error;
     }
@@ -656,12 +656,6 @@ static int cnd_wait(cnd_t *cond, mtx_t *mtx) {
 // Condition variable timed wait
 static int cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *ts) {
 #if defined(_WIN32) || defined(_WIN64)
-    if (mtx->timed) {
-        return thrd_error;
-    }
-    DWORD ms = (DWORD)((ts->tv_sec * 1000) + (ts->tv_nsec / 1000000));
-    return SleepConditionVariableCS(cond, &(mtx->handle.cs), ms) ? thrd_success : thrd_timedout;
-
     struct timespec now;
     if (timespec_get(&now, TIME_UTC) == TIME_UTC) {
         unsigned long long now_ms = now.tv_sec * 1000 + now.tv_nsec / 1000000;
@@ -691,7 +685,7 @@ static int cnd_signal(cnd_t *cond) {
 
     /* Are there any waiters? */
     EnterCriticalSection(&cond->num_waiters_lock);
-    haveWaiters = (cond->num_waiters > 0);
+    have_waiters = (cond->num_waiters > 0);
     LeaveCriticalSection(&cond->num_waiters_lock);
 
     /* If we have any waiting threads, send them a signal */
@@ -714,7 +708,7 @@ static int cnd_broadcast(cnd_t *cond) {
 
     /* Are there any waiters? */
     EnterCriticalSection(&cond->num_waiters_lock);
-    haveWaiters = (cond->num_waiters > 0);
+    have_waiters = (cond->num_waiters > 0);
     LeaveCriticalSection(&cond->num_waiters_lock);
 
     /* If we have any waiting threads, send them a signal */
