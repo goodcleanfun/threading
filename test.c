@@ -488,6 +488,7 @@ SUITE(test_threads_suite) {
     #endif
     RUN_TEST(test_thread_locking);
     RUN_TEST(test_mutex_timed);
+    RUN_TEST(test_mutex_recursive);
     RUN_TEST(test_sleep);
     RUN_TEST(test_thread_exit);
     RUN_TEST(test_yield);
