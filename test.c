@@ -23,6 +23,7 @@ _Thread_local int tls_var = 0;
 mtx_t mutex;
 cnd_t cond;
 tss_t thread_specific_key;
+rwlock_t rwlock;
 #define NUM_CALL_ONCE_FLAGS 10000
 once_flag once_flags[NUM_CALL_ONCE_FLAGS];
 int count = 0;
@@ -116,6 +117,93 @@ TEST test_thread_locking(void) {
     ASSERT_EQ(count, MUTEX_LOCKING_THREADS * THREAD_LOCK_ITERS * 2);
     PASS();
 
+}
+
+#define RWLOCKING_READ_THREADS 10
+
+int rw_resource = 0;
+rwlock_t rwlock;
+
+int thread_reader(void *arg) {
+    rwlock_rdlock(&rwlock);
+    int value = rw_resource; // Read shared resource
+    rwlock_unlock(&rwlock);
+    int expected_value = *((int *)arg);
+    ASSERT_EQ(value, expected_value); // Verify value
+    return 0;
+}
+
+int thread_writer(void *arg) {
+    sleep(2); // Simulate write time
+    rwlock_wrlock(&rwlock);
+    rw_resource = *((int *)arg);
+    rwlock_unlock(&rwlock);
+    return 0;
+}
+
+TEST test_concurrent_readers(void) {
+    const int expected_value = 42;
+    rw_resource = expected_value;
+
+    pthread_t threads[RWLOCKING_READ_THREADS];
+    rwlock_init(&rwlock, NULL);
+
+    // Spawn multiple readers
+    for (int i = 0; i < RWLOCKING_READ_THREADS; ++i) {
+        ASSERT_EQ(thrd_create(&threads[i], thread_reader, (void *)&expected_value), thrd_success);
+    }
+
+    // Join all threads
+    for (int i = 0; i < RWLOCKING_READ_THREADS; ++i) {
+        thrd_join(threads[i], NULL);
+    }
+
+    rwlock_destroy(&rwlock);
+    PASS();
+}
+
+TEST test_exclusive_writer(void) {
+    const int expected_value = 84;
+
+    pthread_t thread;
+    rwlock_init(&rwlock, NULL);
+
+    // Spawn a writer
+    ASSERT_EQ(thrd_create(&thread, thread_writer, (void *)&expected_value), thrd_success);
+
+    // Join the thread
+    pthread_join(thread, NULL);
+
+    // Verify the shared resource
+    ASSERT_EQ(rw_resource, expected_value);
+
+    rwlock_destroy(&rwlock);
+    PASS();
+}
+
+TEST test_interleaved_read_write(void) {
+    const int initial_value = 0;
+    const int new_value = 100;
+
+    pthread_t threads[2];
+    rw_resource = initial_value;
+
+    rwlock_init(&rwlock, NULL);
+
+    // Spawn a reader and a writer
+    ASSERT_EQ(thrd_create(&threads[0], thread_reader, (void *)&initial_value), thrd_success);
+    ASSERT_EQ(thrd_create(&threads[1], thread_writer, (void *)&new_value), thrd_success);
+
+    // Join all threads
+    for (int i = 0; i < 2; ++i) {
+        pthread_join(threads[i], NULL);
+    }
+
+    // Verify the shared resource was updated
+    ASSERT_EQ(rw_resource, new_value);
+
+    rwlock_destroy(&rwlock);
+    PASS();
 }
 
 struct test_mutex_data {
@@ -487,6 +575,9 @@ SUITE(test_threads_suite) {
     RUN_TEST(test_thread_local_storage);
     #endif
     RUN_TEST(test_thread_locking);
+    RUN_TEST(test_concurrent_readers);
+    RUN_TEST(test_exclusive_writer);
+    RUN_TEST(test_interleaved_read_write);
     RUN_TEST(test_mutex_timed);
     RUN_TEST(test_mutex_recursive);
     RUN_TEST(test_condition_variables);
