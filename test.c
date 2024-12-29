@@ -23,7 +23,6 @@ _Thread_local int tls_var = 0;
 mtx_t mutex;
 cnd_t cond;
 tss_t thread_specific_key;
-rwlock_t rwlock;
 #define NUM_CALL_ONCE_FLAGS 10000
 once_flag once_flags[NUM_CALL_ONCE_FLAGS];
 int count = 0;
@@ -134,7 +133,11 @@ int thread_reader(void *arg) {
 }
 
 int thread_writer(void *arg) {
+    #ifdef _WIN32
+    Sleep(2000); // Simulate write time
+    #else
     sleep(2); // Simulate write time
+    #endif
     rwlock_wrlock(&rwlock);
     rw_resource = *((int *)arg);
     rwlock_unlock(&rwlock);
