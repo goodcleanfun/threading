@@ -79,22 +79,19 @@ int rwlock_init(rwlock_t *rwlock, const rwlockattr_t *attr) {
 #define rwlockattr_init(attr) (void)attr
 #define rwlockattr_destroy(attr) (void)attr
 
-int rwlock_rdlock(rwlock_t *rwlock)
-{
+int rwlock_rdlock(rwlock_t *rwlock) {
     if (rwlock == NULL)
         return 1;
     AcquireSRWLockShared(&(rwlock->lock));
 }
 
-int rwlock_tryrdlock(pthread_rwlock_t *rwlock)
-{
+int rwlock_tryrdlock(rwlock_t *rwlock) {
     if (rwlock == NULL)
         return 1;
     return !TryAcquireSRWLockShared(&(rwlock->lock));
 }
 
-int rwlock_wrlock(rwlock_t *rwlock)
-{
+int rwlock_wrlock(rwlock_t *rwlock) {
     if (rwlock == NULL)
         return 1;
     AcquireSRWLockExclusive(&(rwlock->lock));
@@ -102,8 +99,7 @@ int rwlock_wrlock(rwlock_t *rwlock)
     return 0;
 }
 
-int rwlock_trywrlock(rwlock_t *rwlock)
-{
+int rwlock_trywrlock(rwlock_t *rwlock) {
     BOOLEAN ret;
 
     if (rwlock == NULL)
@@ -116,8 +112,7 @@ int rwlock_trywrlock(rwlock_t *rwlock)
 }
 
 
-int rwlock_unlock(rwlock_t *rwlock)
-{
+int rwlock_unlock(rwlock_t *rwlock) {
     if (rwlock == NULL)
         return 1;
 
@@ -130,8 +125,7 @@ int rwlock_unlock(rwlock_t *rwlock)
     return 0;
 }
 
-int rwlock_destroy(rwlock_t *rwlock)
-{
+int rwlock_destroy(rwlock_t *rwlock) {
     (void)rwlock;
     return 0;
 }
