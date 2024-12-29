@@ -13,6 +13,14 @@
 #endif
 #endif
 
+#if defined(__has_include) && __has_include(<stdbool.h>)
+#include <stdbool.h>
+#else
+#define bool int
+#define true 1
+#define false 0
+#endif
+
 #if !(defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201102L)) && !defined(_Thread_local)
  #if defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__SUNPRO_CC) || defined(__IBMCPP__)
   #define _Thread_local __thread
@@ -144,14 +152,6 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
-
-#if defined(__has_include) && __has_include(<stdbool.h>)
-#include <stdbool.h>
-#else
-#define bool int
-#define true 1
-#define false 0
-#endif
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <process.h>

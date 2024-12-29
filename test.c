@@ -145,7 +145,7 @@ TEST test_concurrent_readers(void) {
     const int expected_value = 42;
     rw_resource = expected_value;
 
-    pthread_t threads[RWLOCKING_READ_THREADS];
+    thrd_t threads[RWLOCKING_READ_THREADS];
     rwlock_init(&rwlock, NULL);
 
     // Spawn multiple readers
@@ -165,14 +165,14 @@ TEST test_concurrent_readers(void) {
 TEST test_exclusive_writer(void) {
     const int expected_value = 84;
 
-    pthread_t thread;
+    thrd_t thread;
     rwlock_init(&rwlock, NULL);
 
     // Spawn a writer
     ASSERT_EQ(thrd_create(&thread, thread_writer, (void *)&expected_value), thrd_success);
 
     // Join the thread
-    pthread_join(thread, NULL);
+    thrd_join(thread, NULL);
 
     // Verify the shared resource
     ASSERT_EQ(rw_resource, expected_value);
@@ -185,7 +185,7 @@ TEST test_interleaved_read_write(void) {
     const int initial_value = 0;
     const int new_value = 100;
 
-    pthread_t threads[2];
+    thrd_t threads[2];
     rw_resource = initial_value;
 
     rwlock_init(&rwlock, NULL);
@@ -196,7 +196,7 @@ TEST test_interleaved_read_write(void) {
 
     // Join all threads
     for (int i = 0; i < 2; ++i) {
-        pthread_join(threads[i], NULL);
+        thrd_join(threads[i], NULL);
     }
 
     // Verify the shared resource was updated
