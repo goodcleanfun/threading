@@ -821,7 +821,12 @@ static int tss_set(tss_t key, void *value) {
 #endif
 }
 
+#ifdef __cplusplus
+}
+#endif
 
+#undef THREADING_NO_RETURN
+#endif // defined(__has_include) && __has_include(<threads.h>)
 
 #ifndef _WIN32
 #include <pthread.h>
@@ -940,11 +945,4 @@ int rwlock_destroy(rwlock_t *rwlock) {
 
 #endif
 
-
-#ifdef __cplusplus
-}
-#endif
-
-#undef THREADING_NO_RETURN
-#endif // defined(__has_include) && __has_include(<threads.h>)
 #endif // THREADING_H
