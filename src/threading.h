@@ -36,104 +36,6 @@
 #define no_return _Noreturn
 #endif
 
-
-#ifndef _WIN32
-#include <pthread.h>
-#include <unistd.h>
-
-typedef pthread_rwlock_t rwlock_t;
-typedef pthread_rwlockattr_t rwlockattr_t;
-
-#define rwlock_init pthread_rwlock_init
-#define rwlock_rdlock pthread_rwlock_rdlock
-#define rwlock_wrlock pthread_rwlock_wrlock
-#define rwlock_unlock pthread_rwlock_unlock
-#define rwlock_tryrdlock pthread_rwlock_tryrdlock
-#define rwlock_trywrlock pthread_rwlock_trywrlock
-#define rwlock_destroy pthread_rwlock_destroy
-#define rwlockattr_init pthread_rwlockattr_init
-#define rwlockattr_destroy pthread_rwlockattr_destroy
-
-#define RWLOCK_INITIALIZER PTHREAD_RWLOCK_INITIALIZER
-
-#else
-
-typedef struct {
-    SRWLOCK lock;
-    bool exclusive;
-} rwlock_t;
-
-typedef void *rwlockattr_t;
-
-int rwlock_init(rwlock_t *rwlock, const rwlockattr_t *attr) {
-    (void)attr;
-    if (rwlock == NULL)
-        return 1;
-    InitializeSRWLock(&(rwlock->lock));
-    rwlock->exclusive = false;
-    return 0;
-}
-
-#define RWLOCK_INITIALIZER {.lock = SRWLOCK_INIT, .exclusive = false}
-
-#define rwlockattr_init(attr) (void)attr
-#define rwlockattr_destroy(attr) (void)attr
-
-int rwlock_rdlock(rwlock_t *rwlock) {
-    if (rwlock == NULL)
-        return 1;
-    AcquireSRWLockShared(&(rwlock->lock));
-}
-
-int rwlock_tryrdlock(rwlock_t *rwlock) {
-    if (rwlock == NULL)
-        return 1;
-    return !TryAcquireSRWLockShared(&(rwlock->lock));
-}
-
-int rwlock_wrlock(rwlock_t *rwlock) {
-    if (rwlock == NULL)
-        return 1;
-    AcquireSRWLockExclusive(&(rwlock->lock));
-    rwlock->exclusive = true;
-    return 0;
-}
-
-int rwlock_trywrlock(rwlock_t *rwlock) {
-    BOOLEAN ret;
-
-    if (rwlock == NULL)
-        return 1;
-
-    ret = TryAcquireSRWLockExclusive(&(rwlock->lock));
-    if (ret)
-        rwlock->exclusive = true;
-    return ret;
-}
-
-
-int rwlock_unlock(rwlock_t *rwlock) {
-    if (rwlock == NULL)
-        return 1;
-
-    if (rwlock->exclusive) {
-        rwlock->exclusive = false;
-        ReleaseSRWLockExclusive(&(rwlock->lock));
-    } else {
-        ReleaseSRWLockShared(&(rwlock->lock));
-    }
-    return 0;
-}
-
-int rwlock_destroy(rwlock_t *rwlock) {
-    (void)rwlock;
-    return 0;
-}
-
-
-#endif
-
-
 #if defined(__has_include) && __has_include(<threads.h>) && !defined(__STDC_NO_THREADS__)
 #include <threads.h>
 #else
@@ -918,6 +820,126 @@ static int tss_set(tss_t key, void *value) {
     return pthread_setspecific(key, value) == 0 ? thrd_success : thrd_error;
 #endif
 }
+
+
+
+#ifndef _WIN32
+#include <pthread.h>
+#include <unistd.h>
+
+typedef pthread_rwlock_t rwlock_t;
+typedef pthread_rwlockattr_t rwlockattr_t;
+
+#define rwlockattr_init pthread_rwlockattr_init
+#define rwlockattr_destroy pthread_rwlockattr_destroy
+
+#define RWLOCK_INITIALIZER PTHREAD_RWLOCK_INITIALIZER
+
+int rwlock_init(rwlock_t *rwlock, const rwlockattr_t *attr) {
+    return pthread_rwlock_init(rwlock, attr) == 0 ? thrd_success : thrd_error;
+}
+
+int rwlock_rdlock(rwlock_t *rwlock) {
+    return pthread_rwlock_rdlock(rwlock) == 0 ? thrd_success : thrd_error;
+}
+
+int rwlock_tryrdlock(rwlock_t *rwlock) {
+    return pthread_rwlock_tryrdlock(rwlock) == 0 ? thrd_success : thrd_busy;
+}
+
+int rwlock_wrlock(rwlock_t *rwlock) {
+    return pthread_rwlock_wrlock(rwlock) == 0 ? thrd_success : thrd_error;
+}
+
+int rwlock_trywrlock(rwlock_t *rwlock) {
+    return pthread_rwlock_trywrlock(rwlock) == 0 ? thrd_success : thrd_busy;
+}
+
+int rwlock_unlock(rwlock_t *rwlock) {
+    return pthread_rwlock_unlock(rwlock) == 0 ? thrd_success : thrd_error;
+}
+
+int rwlock_destroy(rwlock_t *rwlock) {
+    return pthread_rwlock_destroy(rwlock) == 0 ? thrd_success : thrd_error;
+}
+
+#else
+
+typedef struct {
+    SRWLOCK lock;
+    bool exclusive;
+} rwlock_t;
+
+typedef void *rwlockattr_t;
+
+int rwlock_init(rwlock_t *rwlock, const rwlockattr_t *attr) {
+    (void)attr;
+    if (rwlock == NULL)
+        return 1;
+    InitializeSRWLock(&(rwlock->lock));
+    rwlock->exclusive = false;
+    return 0;
+}
+
+#define RWLOCK_INITIALIZER {.lock = SRWLOCK_INIT, .exclusive = false}
+
+#define rwlockattr_init(attr) (void)attr
+#define rwlockattr_destroy(attr) (void)attr
+
+int rwlock_rdlock(rwlock_t *rwlock) {
+    if (rwlock == NULL)
+        return 1;
+    AcquireSRWLockShared(&(rwlock->lock));
+}
+
+int rwlock_tryrdlock(rwlock_t *rwlock) {
+    if (rwlock == NULL)
+        return 1;
+    return !TryAcquireSRWLockShared(&(rwlock->lock));
+}
+
+int rwlock_wrlock(rwlock_t *rwlock) {
+    if (rwlock == NULL)
+        return 1;
+    AcquireSRWLockExclusive(&(rwlock->lock));
+    rwlock->exclusive = true;
+    return 0;
+}
+
+int rwlock_trywrlock(rwlock_t *rwlock) {
+    BOOLEAN ret;
+
+    if (rwlock == NULL)
+        return 1;
+
+    ret = TryAcquireSRWLockExclusive(&(rwlock->lock));
+    if (ret)
+        rwlock->exclusive = true;
+    return ret;
+}
+
+
+int rwlock_unlock(rwlock_t *rwlock) {
+    if (rwlock == NULL)
+        return 1;
+
+    if (rwlock->exclusive) {
+        rwlock->exclusive = false;
+        ReleaseSRWLockExclusive(&(rwlock->lock));
+    } else {
+        ReleaseSRWLockShared(&(rwlock->lock));
+    }
+    return 0;
+}
+
+int rwlock_destroy(rwlock_t *rwlock) {
+    (void)rwlock;
+    return 0;
+}
+
+
+#endif
+
 
 #ifdef __cplusplus
 }
