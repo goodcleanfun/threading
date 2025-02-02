@@ -895,6 +895,7 @@ int rwlock_rdlock(rwlock_t *rwlock) {
     if (rwlock == NULL)
         return 1;
     AcquireSRWLockShared(&(rwlock->lock));
+    return 0;
 }
 
 int rwlock_tryrdlock(rwlock_t *rwlock) {
