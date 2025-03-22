@@ -844,29 +844,33 @@ int rwlock_init(rwlock_t *rwlock, const rwlockattr_t *attr) {
     return pthread_rwlock_init(rwlock, attr) == 0 ? thrd_success : thrd_error;
 }
 
-int rwlock_rdlock(rwlock_t *rwlock) {
+int rwlock_lock_shared(rwlock_t *rwlock) {
     return pthread_rwlock_rdlock(rwlock) == 0 ? thrd_success : thrd_error;
 }
 
-int rwlock_tryrdlock(rwlock_t *rwlock) {
+int rwlock_try_lock_shared(rwlock_t *rwlock) {
     if (rwlock == NULL) {
         return thrd_error;
     }
     return pthread_rwlock_tryrdlock(rwlock) == 0 ? thrd_success : thrd_busy;
 }
 
-int rwlock_wrlock(rwlock_t *rwlock) {
+int rwlock_lock_exclusive(rwlock_t *rwlock) {
     return pthread_rwlock_wrlock(rwlock) == 0 ? thrd_success : thrd_error;
 }
 
-int rwlock_trywrlock(rwlock_t *rwlock) {
+int rwlock_try_lock_exclusive(rwlock_t *rwlock) {
     if (rwlock == NULL) {
         return thrd_error;
     }
     return pthread_rwlock_trywrlock(rwlock) == 0 ? thrd_success : thrd_busy;
 }
 
-int rwlock_unlock(rwlock_t *rwlock) {
+int rwlock_unlock_exclusive(rwlock_t *rwlock) {
+    return pthread_rwlock_unlock(rwlock) == 0 ? thrd_success : thrd_error;
+}
+
+int rwlock_unlock_shared(rwlock_t *rwlock) {
     return pthread_rwlock_unlock(rwlock) == 0 ? thrd_success : thrd_error;
 }
 
@@ -876,71 +880,63 @@ int rwlock_destroy(rwlock_t *rwlock) {
 
 #else
 
-typedef struct {
-    SRWLOCK lock;
-    bool exclusive;
-} rwlock_t;
-
+typedef SRWLOCK rwlock_t;
 typedef void *rwlockattr_t;
 
 int rwlock_init(rwlock_t *rwlock, const rwlockattr_t *attr) {
     (void)attr;
     if (rwlock == NULL)
         return thrd_error;
-    InitializeSRWLock(&(rwlock->lock));
-    rwlock->exclusive = false;
+    InitializeSRWLock(&rwlock);
     return thrd_success;
 }
 
-#define RWLOCK_INITIALIZER {.lock = SRWLOCK_INIT, .exclusive = false}
+#define RWLOCK_INITIALIZER SRWLOCK_INIT
 
 #define rwlockattr_init(attr) (void)attr
 #define rwlockattr_destroy(attr) (void)attr
 
-int rwlock_rdlock(rwlock_t *rwlock) {
+int rwlock_lock_shared(rwlock_t *rwlock) {
     if (rwlock == NULL)
         return thrd_error;
-    AcquireSRWLockShared(&(rwlock->lock));
+    AcquireSRWLockShared(rwlock);
     return thrd_success;
 }
 
-int rwlock_tryrdlock(rwlock_t *rwlock) {
+int rwlock_try_lock_shared(rwlock_t *rwlock) {
     if (rwlock == NULL)
         return thrd_error;
-    return TryAcquireSRWLockShared(&(rwlock->lock)) ? thrd_success : thrd_busy;
+    return TryAcquireSRWLockShared(rwlock) ? thrd_success : thrd_busy;
 }
 
-int rwlock_wrlock(rwlock_t *rwlock) {
+int rwlock_lock_exclusive(rwlock_t *rwlock) {
     if (rwlock == NULL)
         return thrd_error;
-    AcquireSRWLockExclusive(&(rwlock->lock));
-    rwlock->exclusive = true;
+    AcquireSRWLockExclusive(rwlock);
     return thrd_success;
 }
 
-int rwlock_trywrlock(rwlock_t *rwlock) {
+int rwlock_try_lock_exclusive(rwlock_t *rwlock) {
     BOOLEAN ret;
 
     if (rwlock == NULL)
         return thrd_error;
 
-    ret = TryAcquireSRWLockExclusive(&(rwlock->lock));
-    if (ret)
-        rwlock->exclusive = true;
+    ret = TryAcquireSRWLockExclusive(rwlock);
     return ret ? thrd_success : thrd_busy;
 }
 
 
-int rwlock_unlock(rwlock_t *rwlock) {
+int rwlock_unlock_exclusive(rwlock_t *rwlock) {
     if (rwlock == NULL)
         return thrd_error;
 
-    if (rwlock->exclusive) {
-        rwlock->exclusive = false;
-        ReleaseSRWLockExclusive(&(rwlock->lock));
-    } else {
-        ReleaseSRWLockShared(&(rwlock->lock));
-    }
+    ReleaseSRWLockExclusive(rwlock);
+    return thrd_success;
+}
+
+int rwlock_unlock_shared(rwlock_t *rwlock) {
+    ReleaseSRWLockShared(rwlock);
     return thrd_success;
 }
 
