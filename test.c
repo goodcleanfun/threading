@@ -124,9 +124,9 @@ int rw_resource = 0;
 rwlock_t rwlock;
 
 int thread_reader(void *arg) {
-    rwlock_rdlock(&rwlock);
+    rwlock_lock_shared(&rwlock);
     int value = rw_resource; // Read shared resource
-    rwlock_unlock(&rwlock);
+    rwlock_unlock_shared(&rwlock);
     int expected_value = *((int *)arg);
     ASSERT_EQ(value, expected_value); // Verify value
     return 0;
@@ -138,9 +138,9 @@ int thread_writer(void *arg) {
     #else
     sleep(2); // Simulate write time
     #endif
-    rwlock_wrlock(&rwlock);
+    rwlock_lock_exclusive(&rwlock);
     rw_resource = *((int *)arg);
-    rwlock_unlock(&rwlock);
+    rwlock_unlock_exclusive(&rwlock);
     return 0;
 }
 
