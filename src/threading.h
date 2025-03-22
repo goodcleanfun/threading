@@ -849,6 +849,9 @@ int rwlock_rdlock(rwlock_t *rwlock) {
 }
 
 int rwlock_tryrdlock(rwlock_t *rwlock) {
+    if (rwlock == NULL) {
+        return thrd_error;
+    }
     return pthread_rwlock_tryrdlock(rwlock) == 0 ? thrd_success : thrd_busy;
 }
 
@@ -857,6 +860,9 @@ int rwlock_wrlock(rwlock_t *rwlock) {
 }
 
 int rwlock_trywrlock(rwlock_t *rwlock) {
+    if (rwlock == NULL) {
+        return thrd_error;
+    }
     return pthread_rwlock_trywrlock(rwlock) == 0 ? thrd_success : thrd_busy;
 }
 
@@ -880,10 +886,10 @@ typedef void *rwlockattr_t;
 int rwlock_init(rwlock_t *rwlock, const rwlockattr_t *attr) {
     (void)attr;
     if (rwlock == NULL)
-        return 1;
+        return thrd_error;
     InitializeSRWLock(&(rwlock->lock));
     rwlock->exclusive = false;
-    return 0;
+    return thrd_success;
 }
 
 #define RWLOCK_INITIALIZER {.lock = SRWLOCK_INIT, .exclusive = false}
@@ -893,41 +899,41 @@ int rwlock_init(rwlock_t *rwlock, const rwlockattr_t *attr) {
 
 int rwlock_rdlock(rwlock_t *rwlock) {
     if (rwlock == NULL)
-        return 1;
+        return thrd_error;
     AcquireSRWLockShared(&(rwlock->lock));
-    return 0;
+    return thrd_success;
 }
 
 int rwlock_tryrdlock(rwlock_t *rwlock) {
     if (rwlock == NULL)
-        return 1;
-    return !TryAcquireSRWLockShared(&(rwlock->lock));
+        return thrd_error;
+    return TryAcquireSRWLockShared(&(rwlock->lock)) ? thrd_success : thrd_busy;
 }
 
 int rwlock_wrlock(rwlock_t *rwlock) {
     if (rwlock == NULL)
-        return 1;
+        return thrd_error;
     AcquireSRWLockExclusive(&(rwlock->lock));
     rwlock->exclusive = true;
-    return 0;
+    return thrd_success;
 }
 
 int rwlock_trywrlock(rwlock_t *rwlock) {
     BOOLEAN ret;
 
     if (rwlock == NULL)
-        return 1;
+        return thrd_error;
 
     ret = TryAcquireSRWLockExclusive(&(rwlock->lock));
     if (ret)
         rwlock->exclusive = true;
-    return ret;
+    return ret ? thrd_success : thrd_busy;
 }
 
 
 int rwlock_unlock(rwlock_t *rwlock) {
     if (rwlock == NULL)
-        return 1;
+        return thrd_error;
 
     if (rwlock->exclusive) {
         rwlock->exclusive = false;
@@ -935,12 +941,12 @@ int rwlock_unlock(rwlock_t *rwlock) {
     } else {
         ReleaseSRWLockShared(&(rwlock->lock));
     }
-    return 0;
+    return thrd_success;
 }
 
 int rwlock_destroy(rwlock_t *rwlock) {
     (void)rwlock;
-    return 0;
+    return thrd_success;
 }
 
 
