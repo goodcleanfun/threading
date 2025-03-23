@@ -887,7 +887,7 @@ int rwlock_init(rwlock_t *rwlock, const rwlockattr_t *attr) {
     (void)attr;
     if (rwlock == NULL)
         return thrd_error;
-    InitializeSRWLock(&rwlock);
+    InitializeSRWLock(rwlock);
     return thrd_success;
 }
 
